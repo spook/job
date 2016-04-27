@@ -1,0 +1,550 @@
+job(7)
+Overview of B<job> - the Linux Batch Facility.
+
+=pod
+
+=head1 NAME
+
+B<job> - Overview of the Linux Batch Facility
+
+=head1 DESCRIPTION
+
+B<job> is not a command.  It is instead a collection of commands
+and daemons that make up the Linux Batch Facility.
+
+B<job> is a batch subsystem for Linux that allows users to submit "jobs"
+to queues to be executed without manual intervention.  
+These jobs, which may be any executable binary or script, run independently.
+Jobs are uniquely identified with a Job ID when submitted.
+Jobs may be prioritized, job types may be defined using templates,
+and arbitrary parameters provided for a job.
+The output and status of the job is captured for later use; 
+the job may retry at intervals to build guaranteed services; 
+group jobs and remote jobs are supported; 
+and job execution may be distributed across widely-separated systems.
+
+Compare B<job> with the C<cron> and C<at> facilities.  Those are similar
+to B<job> but operate under different paradigms.  Together, all three
+provide a batch processing foundation for Linux.
+
+=head1 GETTING STARTED
+
+You need at least one job queue.   Lucky for you, 
+when this package was installed, it created a job queue named "batch".
+To see it, and any other queues that you have, use C<lsjobq>:
+
+  lsjobq
+
+You may submit jobs to a queue.  The job can be any exeutable thing;
+single commands or scripts are typical.  Try this:
+
+  mkjob -n cat /proc/stat
+
+The above runs the C<cat /proc/stat> command to print out processor status.
+The -n says to notify you in your terminal window(s) when the job starts, stops, etc.
+Use -q to submit jobs to a different queue.  Use -h to get usage help for other options.
+
+To see the job(s) on your system, use C<lsjob>:
+
+  lsjob -a
+
+The -a says to show all jobs.  Otherwise it will only show your jobs in the default queue that
+have not completed.
+
+To see the output of the job -- what it wrote to stdout -- use C<catjob>:
+
+  # catjob 40
+  cpu0 60715199 57631 8112509 214997144 1761681 1814 156940 0 0 0
+  cpu1 61237789 41764 8848041 212885180 1651000 19149 13684 0 0 0
+  intr 3529589445 1206647528 3 0 0 4 0 0 1 1 0 0 0 4 0 0 0 818 147012408
+     .
+     .
+     .
+
+=head1 OVERVIEW
+
+***TODO*** WORKING HERE
+
+Batch processing is the execution of a series of programs ("jobs") 
+on a computer without manual intervention.
+
+Jobs are set up so they can be run to completion without human interaction. 
+All input parameters are predefined through scripts and command-line arguments, 
+or network interactions.
+This is in contrast to "online" or interactive programs which prompt the user for 
+such input. 
+A job takes parameters and data files as input, processes the data, and produces a 
+set of output data files.  This operating model is termed as "batch processing" 
+because the input data are collected into batches or sets of records and each batch 
+is processed as a unit.  
+
+The Linux Batch Facility, named 'job', is such a system.
+
+Batch processing has these benefits:
+
+=over
+
+=item * It can shift the time of job processing to when the computing resources are less busy.
+
+=item * It allows work to be shifted to less idle computing resources.
+
+=item * It avoids idling the computing resources with minute-by-minute manual intervention and supervision.
+
+=item * By keeping high overall rate of utilization, it amortizes the computer, especially an expensive one.
+
+=item * It allows the system to use different priorities for interactive and non-interactive work.
+
+=item * Rather than running one program multiple times to process one transaction each time, batch processes will run the program only once for many transactions, reducing system overhead.
+
+=item * Jobs run independently, without requiring users.
+
+=back
+
+=head2 History of Batch Processing
+
+Batch processing has been associated with mainframe computers since the earliest days of electronic computing in the 1950s. There were a variety of reasons why batch processing dominated early computing. One reason is that the most urgent business problems for reasons of profitability and competitiveness were primarily accounting problems, such as billing. Billing may conveniently be performed as a batch-oriented business process, and practically every business must bill, reliably and on-time. Also, every computing resource was expensive, so sequential submission of batch jobs on punched cards matched the resource constraints and technology evolution at the time. Later, interactive sessions with either text-based computer terminal interfaces or graphical user interfaces became more common. However, computers initially were not even capable of having multiple programs loaded into the main memory.
+
+=head2 Modern systems
+
+Batch applications are still critical in most organizations in large part because many common business processes are amenable to batch processing.  While online systems can also function when manual intervention is not desired, they are not typically optimized to perform high-volume, repetitive tasks.  Therefore, even new systems usually contain one or more batch applications for updating information at the end of the day, generating reports, printing documents, and other non-interactive tasks that must complete reliably within certain business deadlines.
+B<job> is one such batch processing subsystem.
+
+=head2 Concepts
+
+***TODO***
+
+=head3 a "job"
+
+A B<job> is the thing that's run (executed) by this job subsystem.
+The job runs "in the background" as a separate process on the system.
+The job may run multiple times, if it indicates that it must rety.
+
+A job is any executable program or script on the system.  
+Jobs are created using the C<mkjob> command.
+
+=head4 job priority
+
+TBS
+
+=head4 job run time
+
+TBS
+
+=head3 try
+
+A "try" is an attempt to run the command (binary or script) for a job.
+Under ideal circumstances, every job will complete on its first run -- its first "try".
+But a job may indicate to the job controller that it is not done, and must
+retry again later.  For example, if the job involves communicating over 
+a network and that network is down.  Each time the command is run is called a "try".
+
+=head3 queue
+
+TBS
+
+=head3 job manager
+
+TBS
+
+=head3 queue manager
+
+TBS
+
+=head3 station
+
+TBS
+
+=head2 Comparison to C<cron> and C<at>
+
+The both the C<cron> and C<at> facilities run jobs at pre-determined times;
+C<cron> does so at the scheduled time repeatedly, such as every Monday or at 9am every day.
+C<at> is used to run a one-shot job at a particular time.
+
+Neither of these support the concept of restartable jobs that must be resiliant to failures, 
+nor the concept of group or remote jobs, 
+nor do they provide a robust environmental context for the executing job. 
+Thats where B<job> comes in.  
+Too, B<job> is distributable across clusters or independent systems.
+
+B<job> is by no means a replacement for C<cron> or C<at>.  For most of your batch
+needs, you'll still want to use C<cron> or C<at>.  But sometimes you'll find 
+that B<job> is more suitable.
+
+=head2 B<job>'s History
+
+The original inspiration for B<job> was the VMS (er, ..."OpenVMS") batch system;
+especially how it works in VMS clusters.  Restartable jobs were easy to
+implement within VMS, and per-job context was easily maintained across invocations via
+the VMS batch job "parameters".
+
+B<job> was originally written as a wrapper around C<at>, with a mild attempt
+to mimic I<some> of the VMS batch queue capabilities, but using C<at> soon ran into
+too many limitations and required too many hacks to make it acceptable for use.
+Thus, B<job> was born as a separate implementation.
+
+=head2 job's Philosophy
+
+B<job> follows the Unix philosophy of "Do one thing and do it well".
+Hence, B<job> is only a batch processing subsystem.
+It does not include things like Enterprise Resource Planning (ERP) components,
+nor a restartable file-transfer utility, nor an elaborate role-based security
+system.  Other job scheduler software packages include some of these things,
+but B<job> intentionally keeps it simple and leaves these out.
+
+
+=head1 FEATURES
+
+A compilation of the major features provided by B<job> -- the Linux Batch Facility.
+
+=head2 Job Features
+
+=head3 Commands to manage jobs (f001)
+
+This package contains commands to manage your jobs:
+
+=over
+
+=item mkjob
+
+create and submit jobs
+
+=item lsjob
+
+list jobs
+
+=item catjob
+
+show a job's output
+
+=item edjob
+
+edit job attributes
+
+=item rmjob
+
+remove, delete, or cancel jobs
+
+=back
+
+=head3 Any user may submit a job (f002)
+
+Any user with access to the queue (see L<Restricted Queues> feature), 
+may submit a job to the batch queue.
+
+=head3 Jobs may be any executable file or script (f003)
+
+Any binary file or script that can be run at the command line, can be 
+submitted as a job.  Note that the job's run-time environment is 
+non-interactive; thus C<stdin> is not attached to any terminal
+device, nor is there a C<DISPLAY> environment for graphical UIs.
+The B<job> environment is similar to that of jobs run under B<cron> or B<at>.
+
+=head3 Jobs have priority
+
+All jobs are assigned a scheduling and run-time priority; this priority ranges from 1 to 9.
+Priority 1 is the best or most preferred priority, 
+while priority 9 is the worst, or last, or least-preferred priority.
+By default, jobs are submitted at priority 5.
+
+When a job manager looks for a job to run in its queue, it selects 
+better priority jobs over worse priorty ones if there is contention
+for job slots.  That is, it will pick a priority 2 job before it picks
+a priority 3 job, for example.
+
+=head3 Jobs run below interactive "niceness"
+
+This is a B<batch> job subsystem, after all.  
+So all jobs run at least one "niceness" below interactive priority on the hosting system.
+The job priority number (1-9) is used directly for the "niceness" value of the process that runs the job.
+See nice(1) for information about Linux's process scheduling priority system.
+
+=head3 Jobs run as their submitting user
+
+When the submitted job runs, it's run as the UID and GID of the submitting user.
+
+=head3 Job Environment
+
+The job manager supplies certain JOB_* environment variables to the running job
+so it can obtain context about itself, such as what try number this is, the
+job try limit, the time it was scheduled to run, and so on.  See jobman(8) for
+this environment.
+
+=head3 Jobs Have State
+
+Every job is in a single job state at any time.
+
+=head3 Unique Job ID
+
+Every submitted job is given a unique job identifier.
+This identifier may be used to refer to the job before, during, and after
+the job runs.  The job identifier is an integer: 1, 2, 3, etc.
+It may not be strictly sequential (as on distributed clusters with zones), 
+but will be unique.
+
+=head3 Jobs May Retry
+
+A job may run more than once.  The job program binary or script is responsible for
+determining if the job wants to run again, or if it is done -- if the job exits with 
+the EAGAIN (11) status, the job is telling the job manager that it wants to run again.
+Also, if the job is externally interrupted with a SIGCONT signal, the job manager
+also notes that and may re-run the job again.
+
+If the job has not exceeed its retry limit, then it is scheduled to be run again
+at a later time.  The delay algorithm is currently simple: The first retry waits
+one minute, the second waits 2 minutes, the third waits 3 minutes, and so on...
+This delay algorithm may change in the future.
+
+=head3 Job Completion or Retry Status Is Available
+
+A user may obtain the completion status -- both signal number and exit status value --
+of any job they submitted (or have permission to see).
+If the job is not complete, but has retried, then the last try's
+completion status is returned.  If the job has never run (yet), the signal number 
+and exit status are returned as zeros.
+
+=head3 Jobs survive system reboots
+
+If the system reboots before, during, or after your job's execution, the job
+still survives.  The job may be restarted if the reboot happened during its execution;
+when restarted your job is provided contextual clues in the environment so it
+can intelligently resume where it left off.
+
+If the queues are part of a cluster or distribute environment, the job may start on 
+one node then continue on another.
+
+=head3 Job Attributes Available
+
+A user may obtain all attributes of their jobs, including things like the job's state, 
+substatus, retry count, run start and end times, etc.
+
+=head3 Job Output Available
+
+A user may obtain the output generated by each and every try of the job.
+Both stdout and stderr are captured to the job file.
+This output may be obtained in sections, per each try, or all together.
+
+=head3 Jobs may be Scheduled
+
+***TODO***
+
+=head3 Retry limit may be specified per-job
+
+***TODO***
+
+=head3 Jobs may be held
+
+A user may place their pending job(s) into a held state.
+When a job is "held", it is not eligible to run.
+Once held, it stays in that state until it is released.
+
+=head3 Jobs may be cancelled
+
+Running jobs may be cancelled by the submitting user, or any user with access to the job.
+
+=head3 Jobs may be killed
+
+Running jobs may be killed by the submitting user, or any user with access to the job.
+
+=head3 Job Notifications
+
+If the job is submitted using the --notify option, the submitter will be notified
+of significant events on their terminal, when logged into the system where the job runs.
+
+=head2 Job Templates (Job Types)
+
+When submitting a job, instead of specifying the full command to run with all its parameters,
+the user may submit a job of a predefined I<type>.
+Job types act as templates for the command to execute.  
+For example, the "payroll" type may produce the paycheck for a particular employee:
+
+  # mkjob -t payroll "Bloody Mary"
+
+The job type definition may include variable portions in the template.
+Each queue may have its own set of job type definitions.
+An example definition may look like:
+
+  [type:payroll]
+  command:  /usr/bin/gnumoney --run-paycheck --employee '$1' --audit
+  priority: 7
+
+In the above example, the first parameter passed in the job when it was created,
+is used as the "$1" string in the command.
+
+=head2 Group Jobs
+
+A major feature of B<job> is the concept of group jobs.  More TBS... ***TODO***
+
+=head2 Remote Jobs
+
+It's possible for a job to "go remote".    More TBS... ***TODO***
+
+=head2 Queue Features
+
+=head3 Commands to manage job queues (f201)
+
+This package contains commands to manage your job queues:
+
+=over
+
+=item mkjobq
+
+create a queue
+
+=item lsjobq
+
+list queues and queue attributes
+
+=item edjobq
+
+edit queue attributes
+
+=item rmjobq
+
+remove a queue and its jobs
+
+=back
+
+=head3 Queue Name and Description
+
+Queues have a simple identifying name, such as "batch" or "financials".  
+An optional description may also be given for the queue; this is a sentence or so 
+of additional detail.
+
+=head3 Run Limit 
+
+This is a job concurrency limit.   More TBS... ***TODO***
+
+=head3 Restricted Queues
+
+(***TODO*** Not yet implemented)
+
+Queues may be restricted to a system group, so that only users who are 
+members of that group may submit jobs to it.
+
+=head2 Miscellaneous Features
+
+=head3 Small Footprint (f901)
+
+This subsystem is intended to be used across a variety of Linux
+systems, including embedded systems where ROM space is tight.
+It therefore is designed to fit within 1/2 MB of memory.
+
+=head3 Automatic Housekeeping
+
+The job manager C<jobman> performs periodic housekeeping on the queues and job files.
+One housekeeping feature is to purge old completed jobs.
+By default, any job in the C<done> state for more than 30 days
+will be purged.  Once purged, all information about the job is lost.
+
+=head3 Logging
+
+All logging is done via syslog, using the "job" facility. 
+Logging levels are configurable; including verbose and debug levels of logging.
+See syslog.conf(5), syslogd(8), and syslog(3) for more information.
+
+=head3 On-line Documentation
+
+On-line documentation is provided as man pages.
+
+TBS...
+
+=head1 CONFIGURATION
+
+***TODO***  Describe the config file parameters in job.conf and each queue.conf file
+
+=head1 FILES
+
+=over
+
+=item /etc/job/job.conf
+
+The overall B<job> configuration file.
+Defaults for retry limits, polling times, priorities,
+etc. are contained here.  Each queue may override these 
+default limits for jobs in their respective queues.
+
+=item /etc/job/qdefs/I<queue_name>.conf
+
+Queue configuration file.  Contains defaults for
+the particular queue.  Individual jobs may be
+submitted with overrides to these defaults.
+
+=item /var/lib/job/job.seq
+
+Sequence number file used to control generation of job IDs.
+
+=item /var/spool/job/I<queue_name>/kill/I<kill_file>
+
+Kill files are semaphores to mark an active job for cancellation.
+Because its not known on which node the owning job manager runs,
+the (distributed) file system is used to mark a job for temination.
+Job managers periodically scan this directory looking for kill files
+for their active jobs; if found they'll cancel that job.  A kill file
+name is simply the integer job number -- no prefix, no extension, no
+contents.
+
+=item /var/spool/job/I<queue_name>/I<job_state>/I<job_files>
+
+This shows how batch jobs are represented in the file system; 
+job files are held within state-named directories (hold, pend, run, etc...), 
+that are within the queue's directory.  
+Please don't mess with the files in this tree!  You have been warned.
+
+=item tI<run_time>.pI<priority>.jI<job_id>.I<submittor>
+
+Example job file names:
+
+  t1448661183.p3.j0001472.mary
+  t1000000001.p5.j0000001.spook
+  t1348201330.p8.j0090323.joe.blow@example.com
+
+A job file; stored in one of the C</var/spool/job/I<queue_name>/I<job_state>/>
+directories as explained above.
+
+The file name format encodes some job attributes:
+The I<run_time> is the epoch time when the job is next eligible
+to run; the I<priority> is the job priority in the queue, 1 being
+best and 9 being worst/slowest; I<job_id> is the unique job number
+assigned to this job; and <submittor> is the username, email, CN,
+or other identifier of who submitted the job.  
+
+Each job file contains attributes about the job, as well as output 
+collected from each run (a "try") and the results of that try.
+The format is similar to -- but not exactly -- a MIME multipart/mixed
+syntax as described in RFC 1341 et al.
+
+=back
+
+=head1 SEE ALSO
+
+job.conf(5), lsjobq(8), edjobq(5), mkjobq(8), rmjobq(8), catjob(8), edjob(8), mkjob(8), lsjob(8), rmjob(8), jobman(8)
+
+=head1 BUGS
+
+Use the issue tracker at L<https://github.com/spook/job> .  
+Don't be shy; check what's already reported and if you have a new bug,
+please let me know!
+
+=head1 COPYRIGHT
+
+LGPL 2.1+
+
+job - the Linux Batch Facility
+(c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+USA
+

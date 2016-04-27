@@ -1,0 +1,350 @@
+jobman(8)
+A manpage for B<job> - the Linux Batch Facility.
+
+=pod
+
+=head1 NAME
+
+B<jobman> - Job manager daemon for B<job> - the Linux Batch Facility.
+
+=head1 SYNOPSIS
+
+/usr/bin/jobman I<options> QUEUE
+
+=head1 DESCRIPTION
+
+B<jobman> is part of the the Linux Batch Facility.
+It is the daemon that manages the jobs in an individual queue.
+For each defined and started queue, there will be one instance of
+this B<jobman> daemon running on your system.
+It is normally started and stopped by the C<queman> daemon.
+Its usual location is C</usr/bin/jobman> .
+
+=head1 OPTIONS
+
+The default option values are sufficient for most installations, so it is 
+typical to run B<jobman> with no options, giving only the queue name.
+Mandatory arguments to long options are mandatory for short options too.
+
+=over
+
+=item -D, --nodaemonize
+
+Run immediate; do not become a daemon
+
+=item -h, --help
+
+Show this help message and exit.
+
+=item -l, --log-level LEVEL
+
+Set the internal log level; used for debugging.
+Levels are (in order) fatal, error, warn, info, verbose, debug, verbosedebug, always, and silent.
+Using the C<--verbose> option is equivalent to C<--log-level verbose> .
+
+=item -L, --no-locks
+
+Do not use job file locking.  ***NYI: Not Yet Implemented***
+
+=item -r, --run-limit
+
+When used with --queue, set the maximum number of concurrent jobs that can execute in the queue;
+this overrides the per-queue default and the system-wide default.
+
+=item -R, --root-dir DIR
+
+Root directory of filesystem, default is /.
+Queues will be placed under var/spool/job starting at this root.
+If you need an entirely different location for the job queues,
+consider softlinking to this location.  This option mostly used
+for testing.
+
+=item -s, --sleep SECS
+
+Set the sleep time -- the polling time -- to SECS seconds.
+Shorter invervals check your queues more often but consume more system resources,
+and values less than about 5 seconds are ineffective anyway as the job manager
+will be spinning constantly (you don't want that).  Typical values are in the 30 
+to 120 second range.
+This overrides the per-queue default and the system-wide default.
+
+=item -t, --test-time SECS
+
+For testing only.  Run the job manager but exit after SECS secs.
+Normally the job manager runs forever, or until signalled to terminate (see L</SIGNALS> below).
+
+=item -T, --test-prefix PFX
+
+For testing only.  Applies a prefix to the process name for this daemon,
+so it can be easily found by the test script.
+
+=item -v, --verbose
+
+Show more output.
+
+=back
+
+=head1 OVERVIEW
+
+For each active job queue, the system's C<queman> will forks an instance 
+of this B<jobman> daemon to manage the jobs in that particular queue.
+Thus if you have N queues defined (and started), you'll have N+1 instances of
+B<jobman> running on your system.  To make it easy to identify,
+each process is named "jobman" plus the queue name,
+for example "jobman batch".
+
+=head1 SIGNALS
+
+Send a SIGHUP to a B<jobman> daemon to cause it to immediately rescan
+all jobs.
+
+Send a SIGTERM to a B<jobman> for a clean shutdown.
+
+=head1 JOB CONTEXT
+
+Each job that B<jobman> starts is run in its own process.  
+The uid and gid of the process is set to the uid and gid of the 
+job's submitter (it actually takes it from the uid and gid of the
+job file, which normally is that of the job's submitter).
+
+The current working directory is set to the user's default HOME directory.
+
+The process's "nice" value is adjusted according to the job's priority;
+a priority 1 job is set to niceness 1, and priority 9 is set to niceness 9.
+No job runs with a nice of zero, so they all run lower than interactive jobs.
+This is a 'batch' subsystem, after all!
+
+Every job's process has a bunch of information passed to it in its
+environment.  The following environment variables are set:
+
+=over
+
+=item JOB_FILE
+
+The full path to the job file that represents this job.
+
+=item JOB_ID
+
+The unique Job Identifier (an integer) for this job.
+
+=item JOB_MASTER_ID
+
+If this job was created as part of a grouop job submission,
+this is the Job ID of the parent job that we were split from.
+If blank, we are a single job.
+
+=item JOB_PRIORITY
+
+the integer priority of this job -- 1 (best) thru 9 (last).
+
+=item JOB_QUEUE
+
+The name of the job queue that is running this job.
+
+=item JOB_RUN_AT
+
+The ISO 8601 formatted time when this job was scheduled to run.
+On a lightly loaded system, this often is the process creation time,
+but on a busy system the job may not get to run at the exact time
+it was scheduled.
+
+=item JOB_STATE
+
+The current state of this job - it will always be "run" when you see it
+here... duh!  But it's provided for consistency anyway.
+FYI, the other states are hold, pend, tied, and done.
+
+=item JOB_SUBMITTER
+
+The identity of the job's submitter.  Often this is the username, and would
+be the same as the USER environment variable.  But if a job comes in thru
+an alternate means, such as a REST API, this would be the real submitter's
+identity, while USER would be the common account the job came through.
+
+=item JOB_SUBSTATUS
+
+The most recent substatus line of text issued by the job when it last ran.
+Substatus lines are normal output written to stdout, that begin with "## "
+(two hash's and a space).  The text following this prefix is the substatus.
+It's often used to maintain job context across multiple tries, such as
+the name of the last successful step in a multi-step operation.
+
+=item JOB_TRY_COUNT
+
+The attempt number for running this job.  The first time it runs this
+will be 1, then 2, 3, 4, ...
+
+=item JOB_TRY_LIMIT
+
+The limit to the number of "tries" to run the job.  It's typically
+a value like 10 or 100, but this is configurable and can be specified
+for each individual jobs.  A useful point is that when C<JOB_TRY_COUNT>
+equals C<JOB_TRY_LIMIT>, then this is the last try for the job.
+Your job script may want to do something special on this last attempt,
+if whatever it wants to do doesn't work.
+
+=item JOB_TYPE
+
+The job "type" name; blank if a command was given, else the pre-defined job
+type specified when the job was created.
+
+=back
+
+B<jobman> also sets the following based on the UID of the submitter:
+
+=over
+
+=item HOME
+
+The submitter's home directory, else /tmp if it cannot be found.
+
+=item PWD
+
+Set to the same as C<HOME>.
+
+=item SHELL
+
+The submitter's default login shell, else blank ("") if it cannot be found.
+
+=item USER
+
+The submitter's user name, else blank ("") if it cannot be found.
+
+=back
+
+Additionally, some environment variables are inherited from the B<jobman> daemon
+process, such as TERM, PATH, and LANG.  Do not count on PATH being always what you
+want -- your script should set PATH appropriately.
+
+=head1 EXIT STATUS INTERPRETATION
+
+Or, how to make a job give up or retry.
+When a job try completes, the job manager looks at both the 
+signal status and the exit status of the process.
+
+If there was no terminating signal and the exit status is zero (0),
+then the job is considered to have completed successfully.
+It is moved to the 'done' state.  Note that just being in the
+'done' state does not indicate success, it just indicates completion.
+
+If the job has no terminating signal and the exit status is EAGAIN 
+or EWOULDBLOCK (both are 11);
+or if the terminating signal is SIGCONT; and the job try count is less
+than the job limit, then the job will be re-queued for another try.
+Its state will be reset to 'pend' (pending) with a run-time set for 
+T minutes later.  'T' is currently equal to the try count -- so
+the first retry waits 1 minute, the second retry waits 2 mintes, and 
+so on -- but this algorithm may change.
+
+If there was no terminating signal, and the exit status is EINPROGRESS (115),
+the job is flagged as "going remote" and will transition to the 'tied'
+status.  It is then the responsibility of the remote job to supply
+status, output, and state updates to the job manager so that this local
+tied job will eventually come out of tied state.  If timely updates are
+not supplied, then the job will be failed and moved to the done state.
+
+All other conditions cause the job to complete with a failed status.
+The job is moved into the 'done' state.
+
+=head1 JOB STATES
+
+A job may be in only one of several states at any moment.  These states are:
+
+=over
+
+=item hold
+
+The job is intentionally held, due to a manual action,
+so that it is not eligible to run.
+
+Geeky side note: New jobs are "born" into the hold state, then moved to pend moments later.
+This prevents a race condition between mkjob and jobman -- it allows the
+job file time to be created and populated, then locked, before it's made eligible 
+for the job manager.  Otherwise the job manager might grab an empty or partially populated
+job file.
+
+=item pend
+
+The job is pending -- eligible to run -- but waiting for an available
+slot or waiting for its run time to come up.
+
+=item run
+
+The job is running, or should be running, on a participating system.
+
+If a job is found in run state but there is no process for that job,
+then either it is running on another node if you're using shared queues;
+or the job manager on your system was killed.
+Either way, don't worry: the job should be rescheduled appropriately
+when the job manager is restarted on your system, or for shared queues
+the other system's job manager(s) will notice the orphaned job
+within a minute or so and reschedule it to run on their nodes.
+
+=item tied
+
+The job is tied to another (set of) job(s).  Group jobs and remote jobs
+will show tied states; the parent of a group job will enter the tied
+state while it's children jobs are incomplete, and a local job that
+dispatches itself remotely will enter the tied state while the remote
+job is not yet done.
+
+=item done
+
+The terminal state for all jobs.  When a job completes -- either
+successfully or failed -- it ends up in this state.
+Look at the final termination signal and exit status of the job
+to determine success or failure.
+
+=item kill -- NOT a state!
+
+Although it looks like a state, because its subdirectory sits alongside
+the state-named subdirectories for a queue, there is no 'kill' state.
+This subdirectory is used to hold kill-orders for jobs that must be
+terminated by the job manager.  See, that's what ye get for peeking
+into my inners!
+
+=back
+
+=head1 KILL ORDERS
+
+TBS...
+Or, how to assasinate a job.  
+
+  touch $killdir/$jobid
+
+You must own the job, blah blah... ***TODO***
+
+
+=head1 SEE ALSO
+
+job(7), queman(8), lsjobq(8), edjobq(5), mkjobq(8), rmjobq(8), catjob(8), mkjob(8), lsjob(8), edjob(8), rmjob(8)
+
+=head1 BUGS
+
+Use the issue tracker at L<https://github.com/spook/job> .  
+Don't be shy; check what's already reported and if you have a new bug,
+please let me know!
+
+=head1 COPYRIGHT
+
+LGPL 2.1+
+
+job - the Linux Batch Facility
+(c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+USA
+

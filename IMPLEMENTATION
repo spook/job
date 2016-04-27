@@ -1,0 +1,76 @@
+Implementation Notes for 'job': The Linux batch job subsystem
+
+General Coding Guildelines
+==========================
+tl;dr: Follow the style you see already in the code.
+For my full style guide, see the STYLE file.
+
+Why No Database engine?
+=======================
+The original project that I wrote this for had some tight "on-disk"
+(ok, "on-flash")) limitations.  It was for small embedded-O/S network
+devices, _and_ large back-end servers.   The same code for both.
+The embedded devices are what set the limits:  
+my project's entire footprint budget was 700kB, and the batch
+job subsystem was just a part of it.  Plus, the embedded O/S was a very
+stripped-down Linux, so I didn't have many of the more popular libraries
+to work with.  Therefore this job subsystem had to be tiny and efficient.
+I allowed about 100kB for the job code plus another 100kB for some shared
+library code that other parts of the project used as well.  
+Total: 200kB... that's it!
+
+I opted to use the file system wherever possible.  I did have a POSIX
+compliant file system on these devices, and that was a huge bonus.
+So my "database" is just flat files.
+
+It is not intended to be used for huge batch queues of jobs.
+My design goals were for up to 10_000 jobs in a queue, including
+the "done" jobs -- what I'd call a "medium-sized" load of jobs.
+For that number of files, most Linux file systems can handle it admirably.
+Therefore I represent all jobs as simple plain-text files.
+
+I'm not against traditional relational databases, such as MySQL (MariaDB),
+TinySQL, etc.  But they just wouldn't fit!  Yes, this 'job' subsystem design
+screams for a classic model-view-controller (MVC) pattern, using
+a traditional database for the model.  Heck, it would be easier.  But I didn't have
+space!  I still think, at some point, I can rewrite it to a cleaner MVC
+pattern without growing the code size too much; and I'd even like to
+make the model (database) part configurable so we can swap-in a traditional
+database instead of my file-system model.  But that's for another day!
+
+
+Distributed Job Queues
+======================
+A.k.a. "Cluster queues".
+
+This implemetation is also intended to be used in a distributed environment,
+where multiple system nodes share the load of a queue; each running jobs out of that
+queue.  To make that work, the idea is the job queue's are on a distributed file
+system (DFS).  The job manager processes ("jobman") running on each node uses
+the flock(2) function to manage contention and access to the job files,
+and to pickup after crashed nodes or other corner-cases.  It ended-up being
+quite simple in the code, and appears to work well.
+
+I tested this extensively using the GlusterFS file system across many servers,
+including a case with six nodes spread two in the USA, two in the UK, and two 
+in Singapore -- and it worked perfectly.   The key thing is that the file
+system is POSIX compliant - properly supporting the open(2), creat(2), flock(2),
+read(2), write(2), and close(2) system I/O functions.  If your distributed file
+system does, that, then you can configure this 'job' system to work across
+that filesystem.
+
+By the way, a shared SAN file system is an ideal way to distribute this 
+batch job subsystem.
+
+
+man Pages
+=========
+
+* Why are the man pages written in POD?
+
+I started writing the man pages by hand; but all the nroff formatting was 
+tedious.  Using POD - Perl's "Plain Old Documentation" - format is much easier.
+I added rules to Makefile.am to convert from .pod to the .7 or .8 etc man
+formats using the pod2man converter.
+
+

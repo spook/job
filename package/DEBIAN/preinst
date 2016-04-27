@@ -1,0 +1,6 @@
+#!/bin/sh
+# Debian pre-install script for the 'job' subsystem
+set -e
+[ -x /etc/init.d/job ] && service job stop
+exit 0
+

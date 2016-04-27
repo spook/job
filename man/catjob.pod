@@ -1,0 +1,142 @@
+catjob(8)
+A manpage for B<job> - the Linux Batch Facility.
+
+=pod
+
+=head1 NAME
+
+catjob - Display to I<stdout> the output and results from a job's run.
+
+=head1 SYNOPSIS
+
+catjob I<[options]> I<job_id>
+
+=head1 DESCRIPTION
+
+Use B<catjob> to display the captured output from a batch job as well as 
+the result(s) of each run attempt (a "try").  By default, all tries are shown,
+but individual tries may be selected.
+
+=head1 OPTIONS
+
+Mandatory arguments to long options are mandatory for short options too.
+
+=over
+
+=item -h, --help
+
+Show this help message and exit.
+
+=item -l, --log-level LEVEL
+
+Set the internal log level; used for debugging.
+Levels are (in order) fatal, error, warn, info, verbose, debug, verbosedebug, always, and silent.
+Using the C<--verbose> option is equivalent to C<--log-level verbose> .
+
+=item -o, --output
+
+When used with -r, show both the output and the result(s).
+Without -r, this is enabled by default.
+
+=item -r, --result
+
+Show the result from tries, such as exit status or the signal that terminated the job.
+
+=item -R, --root-dir DIR
+
+Root directory of filesystem, default is /.
+Queues will be placed under var/spool/job starting at this root.
+If you need an entirely different location for the job queues,
+consider softlinking to this location.  This option mostly used
+for testing.
+
+=item  -t, --try-number NUM
+
+Show the output or results from only this try.
+
+=item -v, --verbose
+
+Show more output.
+
+=item -w, --raw
+
+Show the job file contents, raw (unaltered).  This is equivalent
+to just cat'ting the job file.  This overrides the other options.
+
+=back
+
+=head1 EXAMPLES
+
+Show the output from job 407:
+ # B<catjob 407>
+ processor	: 0
+ vendor_id	: AuthenticAMD
+ cpu family	: 16
+ model		: 6
+ model name	: AMD Athlon(tm) II X2 B28 Processor
+ stepping	: 3
+ microcode	: 0x10000b6
+   .
+   .
+   .
+
+Show just the final result from job 408:
+ # B<catjob -r 408>
+ Exit-Signal: 0
+ Exit-Status: 3
+ Result:      Failed
+
+Show both the output and result from just the second try for job 409, with verbose results:
+ # B<< catjob -r -o -t 2 -v 409 >>
+ Command:     fibbonize -q home-office.mycorp.example.com:2371
+ Job-ID:      409
+ Job-Prio:    5
+ Job-Queue:   nightly-probes
+ Start-Time:  2014-12-28T19:07:29Z
+ Submitter:   balrog
+ Try-Count:   2
+ ---
+ Initializing database... done
+ Fetching poll list... done
+ Connecting to remote server... no response: connection refused
+ Fibbonizer will try again
+ ---
+ Exit-Signal: 0
+ Exit-Status: 11
+ Try-Count:   2
+ End-Time:    2014-12-28T19:07:47Z
+ Result:      Will Retry
+
+=head1 SEE ALSO
+
+job(7), job.conf(5), jobman(8), edjobq(8), lsjobq(8), mkjobq(8), rmjobq(8), edjob(8), lsjob(8), mkjob(8), rmjob(8)
+
+=head1 BUGS
+
+Use the issue tracker at L<https://github.com/spook/job> .  
+Don't be shy; check what's already reported and if you have a new bug,
+please let me know!
+
+=head1 COPYRIGHT
+
+LGPL 2.1+
+
+job - the Linux Batch Facility
+(c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+USA
+

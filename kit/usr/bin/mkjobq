@@ -1,0 +1,146 @@
+#!/bin/bash
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+# Make a job queue
+
+set -e
+prog=$0
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+QSTATES=(run stop)
+JSTATES=(hold pend run tied kill done)
+
+Usage() {
+    cat <<EOF >&2
+Make a job queue.
+
+Usage: $prog [options] <queue_name>
+  where options are:
+  -d  --description STR   Description of queue, optional
+  -f  --force             Force creation even if queue already exists
+  -h  --help              Show this help message and exit
+  -l  --job-limit         Job limit, default is 10 jobs at a time
+  -R  --root-dir DIR      Root directory, default is /
+  -t  --max-tries         Max number of tries, default is 100 per job
+  -T  --test-prefix PFX   Test prefix, used for testing
+  -v  --verbose           Show more output
+
+EOF
+    exit $1
+}
+
+# Inits
+false() { return 1; }
+true()  { return 0; }
+ROOTDIR=${ROOTDIR:-}
+PREFIX=${PREFIX:-}
+DESCR=
+FORCE=false
+LIMIT=10
+TRIES=100
+VERBOSE=false
+
+# Parse the command line
+TEMP=$(getopt --options d:fhl:R:t:T:v \
+              --longopt description:,force,job-limit:,help,root-dir:,max-tries:,test-prefix,verbose -- "$@")
+eval set -- "$TEMP"
+
+while true; do
+    case "$1" in
+        -d|--description)     shift; DESCR=$1;;
+        -f|--force)           FORCE=true;;
+        -h|--help)            Usage 0;;
+        -l|--job-limit)       shift; LIMIT=$1;;
+        -t|--max-tries)       shift; TRIES=$1;;
+        -R|--root-dir)        shift; ROOTDIR=$1;;
+        -T|--test-prefix)     shift; PREFIX=$1;;
+        -v|--verbose)         VERBOSE=true;;
+        --)                   shift; break;;
+        *)                    Usage 1;;
+    esac
+    shift
+done
+if [[ $# -lt 1 ]]; then
+    echo "*** Missing queue name(s)"
+    exit 1
+fi
+
+# Verify the queue name(s) are legit
+re='^[a-zA-Z0-9][-a-zA-Z0-9\.]*$'
+for q in "$@"
+do
+    if ! [[ "$q" =~ $re ]]; then
+        echo "*** bad queue name '$q'; must match $re";
+        exit 1
+    fi
+done
+
+if $VERBOSE; then echo "Root directory is ${ROOTDIR:-/}"; fi
+#if $FORCE;   then echo "Forced creation is on"; fi
+
+# Create each queue dir and state subdirs
+BASEDIR=$ROOTDIR/var/spool/job
+JOBCONF=$ROOTDIR/etc/job/job.conf
+CONFDIR=$ROOTDIR/etc/job/qdefs
+for q in "$@"
+do
+    QDIR=$BASEDIR/$q
+    if [[ $FORCE = false && ( -e $QDIR ) ]]; then
+        echo "*** Queue $q already exists"
+        exit 1;
+    fi
+    if $VERBOSE; then printf "Creating job queue $q at $QDIR\n"; fi
+    mkdir -p $QDIR
+    for state in ${JSTATES[*]}
+    do
+        mkdir -p -m 755 $QDIR/$state
+    done
+
+    # Setup the queue's configuration file
+    cat <<EOQ > $CONFDIR/$q.conf
+[queue]
+name:  $q
+desc:  $DESCR
+state: run
+run-limit: $LIMIT
+max-tries: $TRIES
+EOQ
+
+    # If first setup, make this queue the default
+    if ! [[ -e $JOBCONF ]]
+    then
+    cat <<EOJ > $JOBCONF
+[job]
+default-queue: $q
+EOJ
+    fi
+done
+
+# Tell the queue manager to re-check
+set +e
+QMPID=`ps ax -o pid,cmd | grep '\b'$PREFIX'queman\s*$' | grep -E -o '[0-9]+\b'`
+set -e
+if [ -n "$QMPID" ]; then
+    kill -1 $QMPID 2>/dev/null || true
+fi
+
+exit 0
+

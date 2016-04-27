@@ -1,0 +1,23 @@
+If we're allowing the use of a traditional relational database,
+such as MySQL (MariaDB), what would it look like?
+
+Table Queues:
+=============
+
+Table Qname::Jobs:
+==================
+
+ID
+Prio
+UserArg1..UserArg9
+State
+XSig
+XStat
+LastSubStatus
+OutputFile
+TryNum
+TryLimit
+SubmitTime
+WhenToRunTime
+
+. . .

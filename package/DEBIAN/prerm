@@ -1,0 +1,8 @@
+#!/bin/sh
+# Debian pre-remove script for the 'job' subsystem
+if [ "$1" = "remove" ] || [ "$1" = "purge" ] ; then
+   if pgrep -x jobman > /dev/null; then
+       service job stop || true
+   fi
+fi
+

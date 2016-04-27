@@ -1,0 +1,265 @@
+#!/bin/bash
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+# List job(s)
+
+set -e  # errexit
+set -f  # noglob
+prog=$0
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+# Give usage help
+Usage() {
+    cat <<EOF >&2
+List jobs
+
+Usage: $prog [options] [job_id(s)]
+  where options are:
+  -a  --all               Show all jobs everywhere
+                            Equivalent to --queue '*' --states '*' --submitter '*'
+  -h  --help              Show this help message and exit
+  -H  --noheader          Do not show header lines
+  -q  --queues QUE        Show jobs from queue(s) QUE, use * for all, commas to list
+  -R  --root-dir DIR      Root directory, default is /
+  -s  --submitter WHO     Show jobs submitted by WHO, use * for all
+  -t  --states STATES     Show only jobs in STATES, use * for all, commas to list
+                            States are $ALLSTATES
+  -v  --verbose           Show more output, such as job attributes
+
+If no job IDs are given, then by default only your incomplete jobs 
+in the default queue are shown.  Its as if you specified:
+  --queue=\$DEFAULT_QUEUE --submitter=\$USER --states=hold,pend,run,tied
+Use --all, --queue, --submitter, and --states to modify these behaviours.
+The ability to see job details (--verbose) depends on your permissions,
+which are based on user and group ID just like file permissions.
+
+Job IDs may be listed with space or comma delimiters.
+If you list any job numbers, then --states and --submitters
+are ignored.
+
+EOF
+    exit $1
+}
+
+# join <delimeter> <list...>
+join() { 
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
+# getparam $file $param
+# returns empty string if no match or an error
+getparam() {
+    set +e;
+    local file="$1"
+    local param="$2"
+    val=`grep -m1 -i -s "^$param:" $file`
+    err=$?
+    set -e
+    if [[ $err == 0 ]]; then
+        val=${val#*:}   # remove up to the delimiter
+        # val="${val#"${val%%[![:space:]]*}"}"  # trim leading spaces (echo does this now, not needed)
+        echo $val   # globbing must be off!!! set -f
+    else
+        echo
+    fi
+}
+
+# Inits
+false() { return 1; }
+true()  { return 0; }
+ROOTDIR=${ROOTDIR:-}
+VERBOSE=false
+STATES='hold,pend,run,tied'
+ALLSTATES='hold,pend,run,tied,done'
+WHO="$USER"
+QUEUES=
+JOBS=
+HEADER=true
+
+# Parse the command line
+TEMP=$(getopt --options ahHq:R:s:t:v \
+              --longopt help,root-dir:,verbose -- "$@")
+eval set -- "$TEMP"
+while true; do
+    case "$1" in
+        -a|--all)             QUEUES=('*');STATES=$ALLSTATES; WHO=('*');; 
+        -h|--help)            Usage 0;;
+        -H|--noheader)        HEADER=false;;
+        -q|--queues)          shift; QUEUES=$1;;
+        -R|--root-dir)        shift; ROOTDIR=$1;;
+        -s|--submitter)       shift; WHO=$1;;
+        -t|--states)          shift; STATES=$1;;
+        -v|--verbose)         VERBOSE=true;;
+        --)                   shift; break;;
+        *)                    Usage 1;;
+    esac
+    shift
+done
+
+# Process the jobs list, if given
+JOBS="$@"
+if [[ "x$JOBS" == "x*" ]]; then JOBS=; fi
+IFS=','; JOBS=($JOBS); unset IFS
+
+# Process the --states option
+# -(were all states requested?)-
+if [[ "x$STATES" == 'x*' ]]; then STATES="$ALLSTATES"; fi
+# -(if specific job numbers given, then check all states)-
+if [[ ${#JOBS} -ne 0 ]]; then STATES="$ALLSTATES"; fi
+# -(lowercase and then split to a true array)-
+IFS=','; STATES=(${STATES,,}); unset IFS
+# -(check that the state names are legit)-
+for s in ${STATES[@]}; do
+    if [[ ! ",$ALLSTATES," =~ ",$s," ]]; then
+        echo "*** Bad state $s"
+        exit 1
+    fi
+done
+
+# Process the --queues option
+# -(use the default queue if none given)-
+if [[ "x$QUEUES" == 'x' ]]; then
+    IFS=':'
+    defq=(`grep default-queue $ROOTDIR/etc/job/job.conf`)
+    unset IFS
+    defq=${defq[1]}
+    if [[ "x$defq" == 'x' ]]; then
+        echo "*** No queues given, and no default queue defined.  Use --queues to specify the queues."
+        exit 1
+    fi
+    QUEUES=($defq)
+fi
+# -(were all queues requested?)-
+QBASE=$ROOTDIR/var/spool/job
+if [[ x$QUEUES == 'x*' ]]; then QUEUES=(`ls $QBASE`); fi
+# -(verify that the queue name(s) exist)-
+for q in ${QUEUES[@]}; do
+    if ! [ -e $QBASE/$q ]; then
+        echo "*** No such queue $q";
+        exit 1
+    fi
+done
+if [[ ${#QUEUES[@]} -lt 1 ]]; then
+    echo "*** No queues found"
+    exit 1
+fi
+
+# Process the --submitters option
+# -(if specific job numbers given, then check all submitters)-
+if [[ ${#JOBS} -ne 0 ]]; then WHO='*'; fi
+IFS=','; WHO=($WHO); unset IFS
+
+# Show what's up
+if $VERBOSE; then
+    echo "Filtering on"
+    echo "  Queues: ${QUEUES[@]}"
+    echo "  States: ${STATES[@]}"
+    echo "  Owners: ${WHO[@]:--(all)-}"     # hmmm, using * for all, not ""
+    echo " Job IDs: ${JOBS[@]:--(all)-}"
+    echo "---"
+fi
+
+# Now the main part - list each job
+if $HEADER && ! $VERBOSE; then
+    echo "job ID    queue           state   prio  run time             submitter"
+    echo "--------  -------------   -----   ----  -------------------  ---------"
+fi
+
+# Optimization: If a single job, then don't wildcard all files!
+jobnum="*"
+if [[ ${#JOBS} -eq 1 ]]; then
+    printf -v jobnum "%7.7d" "$JOBS"
+fi
+
+# Go thru each queue first, then by states, then by submitter, then by job
+for q in ${QUEUES[@]}; do
+    for s in ${STATES[@]}; do
+        for w in ${WHO[@]}; do
+            # Now look at each file, does it match?
+            printf -v pattern "%s/%s/%s/t*.p*.j%s.%s" "$QBASE" "$q" "$s" "$jobnum" "$w"
+            set +f; files=($pattern); set -f
+            for f in ${files[@]}; do
+                if [[ "x$f" != "x$pattern" ]]; then
+                    base=${f##*/}                      # take just basename
+                    IFS='.'; parts=($base); unset IFS  # split into parts
+                    time=${parts[0]}; time=${time##t}; time=`date -d@$time '+%F:%T'`
+                    if [[ $time < '2000' ]]; then time='--asap--           '; fi
+                    prio=${parts[1]}; prio=${prio##p}
+                    jid=${parts[2]};  jid=${jid##j}; jid=$((10#$jid))  # strip 'j' trim leading 0's
+                    who=${parts[3]}
+
+                    # Only want certain jobs? skip what we don't want
+                    # TODO
+
+                    if ! $VERBOSE; then
+                        printf "%8d  %-14s  %5s     %d   %19s  %s\n" $jid $q $s $prio "$time" "$who"
+                    else
+                        # Stuff decoded from the file name
+                        echo "Job ID:    $jid"
+                        echo "Queue:     $q"
+                        echo "State:     $s"
+                        echo "Priority:  $prio"
+                        echo "Run Time:  $time"
+                        echo "Submitter: $who"
+
+                        # Search for some details.
+                        # Why do we check -lt 1 instead of -lt 2?
+                        #   Although grep returns 1 meaning 'not found', 
+                        #   and 2+ meaning no permissions or other error; 
+                        #   for here if we don't have a command string, then
+                        #   all bets are off anyway.
+#                        set +e; cmd=`grep -m1 -i -s '^command:' $f`; err=$?; set -e
+#                        if [[ $err -lt 1 ]]; then
+                        cmd=$(getparam $f "command")
+                        if [[ "$cmd" != "" ]]; then
+                            cmd=${cmd#*:}                           # remove up to the delimiter
+                            cmd="${cmd#"${cmd%%[![:space:]]*}"}"    # trim leading spaces
+                            echo "Job File:  $f"
+                            echo "Command:   $cmd"
+                            job_type=$(getparam $f job-type)
+                            job_limit=$(getparam $f try-limit)
+                            job_pid=$(getparam $f job-pid)
+                            echo "Job Type:  $job_type"
+                            echo "Tries:     ??/$job_limit" 
+                            echo "Job PID:   $job_pid"
+# tries/limit
+# most recent signal:exit status and (success/fail/retry/remote)
+# Start Time (first)
+# End Time (latest)
+# calculated Run Duration, totaling each try (NOT diff of above two!), w/(not started) or (still running) tags
+# Sub-Status
+                        else
+                            echo "*** No more information visible"
+                        fi
+                        echo "---"
+                    fi
+                fi
+            done
+        done
+    done
+done
+
+
+exit 0
+

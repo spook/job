@@ -1,0 +1,9 @@
+Package:        job
+Version:        {BuildVersion}
+Section:        contrib/utilities
+Priority:       important
+Architecture:   {BuildPlatform}
+Maintainer:     Uncle Spook<spook@MisfitMountain.org>
+Installed-Size: {BuildSize}
+Depends:        
+Description:    The Linux Batch Facility

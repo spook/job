@@ -1,0 +1,78 @@
+#!/bin/bash
+# Note we're using bash, so we can use [[ ]] and other nice features
+# Initialize a test root for the 'job' subsystem
+
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+if [[ $1 == "" ]]; then
+    echo "*** Missing root"
+    exit 1
+fi
+ROOT=$1; shift
+
+# Determine "from-root": the source of binaries, etc
+FROM='***MISSING SOURCE OF JOB BINARIES***'
+  if [[ -d ./etc/job ]];      then FROM=.
+elif [[ -d ./kit/etc/job ]];  then FROM=./kit
+elif [[ -d ../kit/etc/job ]]; then FROM=../kit
+elif [[ -d /etc/job ]];       then FROM=/
+fi
+
+# Create tree
+mkdir -p $ROOT/etc/init.d
+mkdir -p $ROOT/etc/job/qdefs
+mkdir -p $ROOT/tmp
+mkdir -p $ROOT/usr/bin
+mkdir -p $ROOT/usr/lib
+mkdir -p $ROOT/usr/doc/job
+mkdir -p $ROOT/usr/share/man/man7
+mkdir -p $ROOT/usr/share/man/man8
+mkdir -p $ROOT/var/lib/job
+mkdir -p $ROOT/var/log/job
+mkdir -p $ROOT/var/spool/job
+
+# Populate the root
+cp -a $FROM/usr/bin/queman $ROOT/usr/bin/
+cp -a $FROM/usr/bin/jobman $ROOT/usr/bin/
+cp -a $FROM/usr/bin/edjobq $ROOT/usr/bin/
+cp -a $FROM/usr/bin/lsjobq $ROOT/usr/bin/
+cp -a $FROM/usr/bin/mkjobq $ROOT/usr/bin/
+cp -a $FROM/usr/bin/rmjobq $ROOT/usr/bin/
+cp -a $FROM/usr/bin/catjob $ROOT/usr/bin/
+cp -a $FROM/usr/bin/edjob  $ROOT/usr/bin/
+cp -a $FROM/usr/bin/lsjob  $ROOT/usr/bin/
+cp -a $FROM/usr/bin/mkjob  $ROOT/usr/bin/
+cp -a $FROM/usr/bin/rmjob  $ROOT/usr/bin/
+
+cp -a $FROM/etc/job/job.conf $ROOT/etc/job/
+
+cp -a $FROM/usr/lib/libjob.so.1.0.0 $ROOT/usr/lib/
+ln -sf libjob.so.1.0.0              $ROOT/usr/lib/libjob.so
+ln -sf libjob.so.1.0.0              $ROOT/usr/lib/libjob.so.1
+
+# Make the default queue
+$ROOT/usr/bin/mkjobq -R $ROOT -f batch
+
+# We be done
+echo "Root $ROOT created"
+exit 0
+

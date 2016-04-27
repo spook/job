@@ -1,0 +1,22 @@
+Read-me file for 'job': the Linux batch job subsystem
+
+Building
+========
+
+Unpack the source tarball:
+
+    # tar -xzf job-yy.mm-nnn.tgz
+
+Build the components and kit
+
+    # cd job
+    # ./acbuild -zcprs
+
+Look in dist/* for your .deb or .rpm kit to install.
+
+    # dpkg -i dist/job-*.deb
+    # rpm -i dist/job-*.rpm
+
+Enjoy!
+-- Uncle Spook
+

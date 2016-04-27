@@ -1,0 +1,13 @@
+#!/bin/sh
+# Debian post-remove script for the 'job' subsystem
+if [ "$1" = "remove" ]; then
+    ldconfig
+    update-rc.d -f job remove 1>/dev/null
+elif [ "$1" = "purge" ]; then
+    ldconfig
+    update-rc.d -f job remove 1>/dev/null
+    rm -rf /etc/job         || true
+    rm -rf /var/lib/job     || true
+    rm -rf /var/spool/job   || true
+fi
+
