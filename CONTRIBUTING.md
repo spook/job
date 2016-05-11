@@ -55,15 +55,15 @@ By making a contribution to this project, I certify that:
 
 ## Contributors
 
-* Uncle Spook             spook(at)MisfitMountain(dot)org 
-* Paul Vencel             paul(at)vencel(dot)us
-* Jimmy Maguire           jimmy.maguire(at)hpe(dot)com
-* Aldin Šehmehmedović     aldin.sehmehmedovic(at)comtrade(dot)com
-* Hewlett-Packard Company
+* Uncle Spook <br/>            spook(at)MisfitMountain(dot)org 
+* Paul Vencel <br/>            paul(at)vencel(dot)us
+* Jimmy Maguire <br/>          jimmy.maguire(at)hpe(dot)com
+* Aldin Šehmehmedović <br/> aldin.sehmehmedovic(at)comtrade(dot)com
+* Hewlett-Packard Company <br/>
 Thanx also to Hewlett-Packard Company (now Hewlett Packard Enterprise Company)
 for allowing us to move this work to the open source community.  This project
 was originally done as a prototype for a batch subsystem component in the HP
-Remove Device Access firmware.
+Remote Device Access firmware.
 
 ## Open Source Uses
 
