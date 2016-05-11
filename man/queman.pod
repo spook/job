@@ -1,0 +1,129 @@
+queman(8)
+A manpage for B<job> - the Linux Batch Facility.
+
+=pod
+
+=head1 NAME
+
+B<queman> - Queue manager daemon for B<job> - the Linux Batch Facility.
+
+=head1 SYNOPSIS
+
+/usr/bin/queman I<options>
+
+=head1 DESCRIPTION
+
+B<queman> is the daemon that monitors queues coming and going,
+for the Linux Batch Facility.  For each defined queue, it
+launches an instance of C<jobman> to manage that queue; 
+for each deleted queue, it kills off the existing C<jobman> instance.
+
+B<queman> is normally started by the operating system at boot time.
+Its usual location is C</usr/bin/queman> .
+
+=head1 OPTIONS
+
+The default option values are sufficient for most installations, so it is 
+typical to run B<queman> with no options.
+Mandatory arguments to long options are mandatory for short options too.
+
+=over
+
+=item -D, --nodaemonize
+
+Run immediate; do not become a daemon
+
+=item -h, --help
+
+Show this help message and exit.
+
+=item -l, --log-level LEVEL
+
+Set the internal log level; used for debugging.
+Levels are (in order) fatal, error, warn, info, verbose, debug, verbosedebug, always, and silent.
+Using the C<--verbose> option is equivalent to C<--log-level verbose> .
+
+=item -R, --root-dir DIR
+
+Root directory of filesystem, default is /.
+Queues will be placed under var/spool/job starting at this root.
+If you need an entirely different location for the job queues,
+consider softlinking to this location.  This option mostly used
+for testing.
+
+=item -s, --sleep SECS
+
+Set the sleep time -- the polling time -- to SECS seconds.
+Shorter invervals check your queue definitions more often but consume more system resources,
+and values less than about 5 seconds are ineffective anyway as the queue manager
+will be spinning constantly (you don't want that).  Typical values are in the 30 
+to 120 second range.
+This option overrides the default in the config file.
+
+=item -t, --test-time SECS
+
+For testing only.  Run the job manager but exit after SECS secs.
+Normally the job manager runs forever, or until signalled to terminate (see L</SIGNALS> below).
+
+=item -T, --test-prefix PFX
+
+For testing only.  Applies a prefix to the process name for this daemon,
+so it can be easily found by the test script.
+
+=item -v, --verbose
+
+Show more output.
+
+=back
+
+=head1 OVERVIEW
+
+B<queman> is the system queues manager, 
+watching all the defined queues on the system for new/changed/removed
+queues.  As queues come and go, it starts or stops a specific job managers
+for that queue.  
+
+The B<queman> is normally run as a root service on your system.
+
+To make it easy to identify, this daemon sets its process name to "queman".
+
+=head1 SIGNALS
+
+Send a SIGHUP to a B<queman> daemon to cause it to immediately rescan
+queues.
+
+Send a SIGTERM to a B<queman> for a clean shutdown.
+
+=head1 SEE ALSO
+
+job(7), jobman(8), lsjobq(8), edjobq(5), mkjobq(8), rmjobq(8), catjob(8), mkjob(8), lsjob(8), edjob(8), rmjob(8)
+
+=head1 BUGS
+
+Use the issue tracker at L<https://github.com/spook/job> .  
+Don't be shy; check what's already reported and if you have a new bug,
+please let me know!
+
+=head1 COPYRIGHT
+
+LGPL 2.1+
+
+job - the Linux Batch Facility
+(c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+USA
+

@@ -1,0 +1,26 @@
+#!/usr/bin/perl -w
+use strict;
+use POSIX;
+
+my $inter    = 30;
+my $statfile = "stats.csv";
+open SF, ">>", $statfile
+    or die "*** Cannot open $statfile for append: $!\n";
+while (1) {
+    my $now  = time();
+    my $next = $now + $inter;
+    $next = int($next / $inter) * $inter;    # Round down
+    my @out   = qx(lsjobq);
+    my $qtime = time() - $now;
+    shift @out;
+    shift @out;
+    my $line   = shift @out;
+    my @parts  = split(/\s+/, $line);
+    my $nowstr = strftime('%Y-%m-%dT%H:%M:%SZ', gmtime($now));
+    print SF join(',', $nowstr, @parts, $qtime) . "\n";
+    print join(',', $nowstr, @parts, $qtime) . "\n";
+
+    my $dur = $next - time();
+    $dur = 0 if $dur < 0;
+    sleep $dur;
+}

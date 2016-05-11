@@ -1,0 +1,195 @@
+To Do:
+======
+
+(Also look for TODO's in the code and man pages)
+
+[pv] Make "## " substatus prefix configurable
+
+When a job starts, it says this:
+    Job 94: Started as PID 660
+But if not the first time thru, make it say Re-starting try 2/100 as PID ...
+
+Do a control-output, like a substatus, that can set things such as:
+For example, instead of "## " for substatus, emit "##+job-restart-interval:10" for +10 seconds
+
+Consider using ISO8601 time format in the timestamps part of the filename.
+    it's only 14 chars vs the 10 epoch now;  YYMMDDHHMMSS
+    the time conversion really isn't all that much overhead;
+    will probably make it easier for troubleshooting and debugging.
+
+Set LD_LIBRARY_PATH for itg and ft tests!  Perhaps in testall.pl
+
+testall.pl is a mess - cleanup!
+
+Tests!
+  test/unit/*
+  test/ft/*     (feature tests)
+  Add at least one valgrind test to check for leaks
+
+Finish utility commands.  Here's current status:
+    catjob   - C++ main, OK
+    edjob    - skeleton
+    edjobq   - skeleton
+    holdjob  - add new
+    killjob  - add new
+    lsjob    - shell script, OK
+    lsjobq   - shell script, OK
+    mkjob    - C++ main, OK
+    mkjobq   - shell script, OK
+    mvjob    - skeleton
+    mvjobq   - skeleton
+    rmjob    - skeleton
+    rmjobq   - shell script, OK
+    purgejobq -add new (find better name, or make part of rmjob?)
+    job-pump - Perl script, OK
+    stopjobq/startjobq - add new, figure out what to call this, or make part of other cmd
+
+For lsjob, show the node that run-state jobs are running on.
+Include the FQDN in each try's output section.
+Include HOST(NAME)? envvar for job to use (maybe, script can just get it)
+Make catjob show it too.
+
+For lsjob, add status (sig:ex) to right of state, for if ever tried 1+ times
+
+Finish the template type stuff.
+
+Go thru code, retry on file create or rename (mv's) that give "Device or resource busy" EBUSY.
+These system (2) calls can return EBUSY:
+    bdflush
+    creat       - none directly, but probably via fopen()'s
+    delete_module
+    dup         - none
+    dup2        - job/launch.cxx, job/daemon.cxx
+    dup3        - none
+    fcntl       - none
+    fcntl64
+    init_module
+    kexec_load
+    mount
+    move_pages
+    mq_notify
+    msync
+    open    - job/seqnum.cxx, job/launch.cxx, job/file.cxx, job/daemon.cxx, jobman.cxx, queman.cxx
+    pivot_root
+    ptrace
+    quotactl
+    remove(3) - can return unlink and rmdir errors
+    rename  - job/file.cxx (2)
+    rmdir   - none
+    swapoff
+    swapon
+    umount
+    umount2
+    unlink  - jobman.cxx (2)
+    waitpid - job/launch.cxx, job/daemon.cxx
+
+    read - various places, grep for it
+    write - various places, grep for it
+    close - various places, grep for it
+        ------->  All above done 2016-01-18, under test now
+
+
+These are not documented as able to return EINTR nor EBUSY, but
+looking thru the source code, and I think they can indeed.  Wrap 'em!
+    rmdir
+    opendir
+    readdir
+    closedir
+    scandir
+
+Get rid of iostreams
+  There's one place left, in the getopt module because it uses
+  the optionparser code, and optionparser uses streams.  Maybe there's still a way...
+
+For job::launch, we take a command string, then wordexp() it to split into args
+  for execv*().  But where we use job::launch, we already have the args split out,
+  so we play quoting games (qqif()) to make the command string from the args.
+  This is unnecessary; just modify job::launch to take the args vector directly!
+  ...
+  However, the wordexp() will be quite useful with template token expansion.  Hmmmm....
+
+For mkjob --group, allow -g @file where file contains the list of id's
+
+Add job duration limit - will kill job if it runs longer than that limit, if set.
+
+I don't like that the per-queue jobman daemons log to /var/log/job,
+  instead of syslog.  It's the artifact of using job::launch to kick 'em off.
+  Use syslog instead somehow.
+
+Ensure that kill files for a job are owned by the job submitter or root,
+  or something like this (that is, the killfile's user/group can get to the job file)
+
+Design exactly how we'll handle REMOTE tied jobs.
+  Finish the sig/xstate 0/115 transition of this, and a watchdog
+  to insure that if we don't get timely updates, we fail the tied job.
+
+Put string utility functions into a str:: namespace (kinds mirrors std::, eh?)
+
+--> Rapid search by user params (or any info given when submitting).
+    Do step-wise considering "speed of attributes".
+    For now: AND-only searches.  I don't want to re-invent a database query optimizer!
+    Ex: Give me all usrarg1 params where jobtype=x and state=y in queue=z
+
+Make queue/job model API better defined, so we can switch to a D/B if wanted.  MVC stuff.
+
+REST API as a dynamically loaded module, or separate jobrest / libjobrest package.
+--> Will be a separate project
+
+Document the libjob C/C++ library API
+  + Include the header(s) for the supported API, in the installed kit
+
+Evaluate where scandir() used, can we eek out a tiny bit more speed using opendir()/readdir()
+  and doing things ourselves?  Watch out for extra pagefaults, if scandir is page-locked, etc.
+  Would be worth it to gain 4% or more.  [quick analysis says <0.5%, so prob not worth it].
+  But... would is be a simpler implementation using our own readdir(), since we may not
+  need the confusing callbacks?  Hmmmm....
+
+Prepare Wikipedia updates for https://en.wikipedia.org/wiki/List_of_job_scheduler_software
+
+Suggestions/issues from 2016-01-21 Training
+===========================================
+* Fix user's home dir when job runs
+    --> DONE 2016-01-21
+* Perhaps rename all commands to start with "job", such as jobls, jobcat, ...
+    That allows one to type "job" tab-tab to see the available commands.
+* Document that aliases won't work in a submitted command (since we don't run 
+    the user's login shell script)
+    --> DONE 2016-01-21
+
+
+Bugs:
+=====
+  * ERR [jobman.cxx:321] Job 323509: stuck, cannot repath: repath: rename
+        from: /var/spool/job/batch/run/t0946684799.p2.j0323509.root
+          to: /var/spool/job/batch/pend/t0946684799.p2.j0323509.root
+        No such file or directory
+    Logic is a bit askew here, another node grabbed and moved the job in the
+    time since the list of run-state jobs was obtained.  Still, tho, the
+    lock() step a few lines above should have prevented this.  Dig into it.
+
+  * In a distributed environment, when rmjobq a queue, only the current node's
+    queman gets signalled to look again and kill the jobman for that queue.
+    The other nodes jobmans keep going, getting "no such file" errors.
+    And there's probably a short period where the current node can give
+    those errors too.  
+    Should jobman just die if it sees it's queue go away?  Maybe after
+    X amount of time (enough time for queman to notice?)
+    Cu'z if we nuke and put back the queue right away, queman on other
+    nodes won't catch this (could we keep track of the inode number?)
+
+  * We're only installing on Upstart systems; we need to handle the old system V
+    and the new systemd.
+    And don'd forget the inittab crash recovery settings (restart).
+
+  * If group job can't create all child jobs, then it should fail the whole mess, 
+    killing any child jobs that did get created:  for example, the file system filled up
+    halfway thru making the kid jobs.  Also, what about if the system crashes in mid-create?
+
+  * lsjobq doesn't give accurate totals on a DFS; because it counts files in each
+        subdir separately, then adds 'em.  But jobs are being moved between the
+        dirs while this is happening! It's also inconsistent across the nodes
+        by a little bit.
+
+  * --notify does not work when "the other node" runs the job; at least, 
+    the notification goes there instead of where you're logged in.
+

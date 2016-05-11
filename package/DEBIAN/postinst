@@ -1,0 +1,24 @@
+#!/bin/sh
+# Debian post-installation script for the 'job' subsystem
+case "$1" in
+    configure)
+        ldconfig 1>/dev/null
+        update-rc.d -f job defaults 1>/dev/null
+        if hash systemctl 2>/dev/null; then     # use 'hash' to check if the command exists
+            systemctl daemon-reload
+        fi
+        #if pgrep -x jobman > /dev/null; then
+            service job restart
+        #fi
+        mkjobq -f batch
+        ;;
+    
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst - unknown argument '$1'" >&2
+        exit 1
+    ;;
+esac
+

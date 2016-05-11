@@ -1,0 +1,127 @@
+#!/bin/sh
+
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+set -e
+
+PLAT=$1
+VERSION=$2
+DEB_ARCH=`dpkg-architecture -qDEB_BUILD_ARCH`
+DEB_ROOT=/tmp/deb
+DEB_PLATFORM=`uname -m`
+DEB_FILE=job-${VERSION}-${PLAT}.${DEB_ARCH}.deb
+DEB_NAME=job
+DST_ROOT=${DEB_ROOT}/${DEB_NAME}
+DIST=dist
+
+# Clean out any exising directory with this DEB version
+echo
+echo Cleaning working directory ${DST_ROOT}
+rm -rf ${DST_ROOT}
+
+# Directories
+echo
+echo Making directories
+install -m755 -d ${DST_ROOT}/etc/init.d
+install -m755 -d ${DST_ROOT}/etc/job
+install -m755 -d ${DST_ROOT}/etc/job/qdefs
+install -m755 -d ${DST_ROOT}/usr/bin
+install -m755 -d ${DST_ROOT}/usr/lib
+install -m755 -d ${DST_ROOT}/usr/share/doc/job
+install -m755 -d ${DST_ROOT}/usr/share/man/man5
+install -m755 -d ${DST_ROOT}/usr/share/man/man7
+install -m755 -d ${DST_ROOT}/usr/share/man/man8
+install -m755 -d ${DST_ROOT}/var/lib/job
+install -m755 -d ${DST_ROOT}/var/log/job
+install -m755 -d ${DST_ROOT}/var/spool/job
+
+# Files
+echo
+echo Copying files
+install  -m755 kit/etc/job/job.conf         ${DST_ROOT}/etc/job
+install  -m755 kit/etc/init.d/job           ${DST_ROOT}/etc/init.d
+install  -m755 kit/usr/bin/catjob           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/edjob            ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/edjobq           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/jobman           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/queman           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/lsjob            ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/lsjobq           ${DST_ROOT}/usr/bin
+install -m4755 kit/usr/bin/mkjob            ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/mkjobq           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/mvjob            ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/mvjobq           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/rmjob            ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/bin/rmjobq           ${DST_ROOT}/usr/bin
+install  -m755 kit/usr/lib/libjob.so.1.0.0  ${DST_ROOT}/usr/lib
+ln -s                      libjob.so.1.0.0  ${DST_ROOT}/usr/lib/libjob.so
+ln -s                      libjob.so.1.0.0  ${DST_ROOT}/usr/lib/libjob.so.1
+install  -m755 test/load/job-pump           ${DST_ROOT}/usr/bin
+install  -m644 package/LICENSE              ${DST_ROOT}/usr/share/doc/job/LICENSE
+
+# man pages
+echo
+echo man pages
+install -m755 man/job.conf.5.gz    ${DST_ROOT}/usr/share/man/man5/
+install -m755 man/job.7.gz         ${DST_ROOT}/usr/share/man/man7/
+install -m755 man/jobman.8.gz      ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/queman.8.gz      ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/catjob.8.gz      ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/edjob.8.gz       ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/edjobq.8.gz      ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/lsjob.8.gz       ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/lsjobq.8.gz      ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/mkjob.8.gz       ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/mkjobq.8.gz      ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/rmjob.8.gz       ${DST_ROOT}/usr/share/man/man8/
+install -m755 man/rmjobq.8.gz      ${DST_ROOT}/usr/share/man/man8/
+
+# Set up the control file
+echo
+echo Control files
+install -m755 -d ${DST_ROOT}/DEBIAN
+
+# Build the md5sums file
+cd ${DST_ROOT}
+find . -type f ! -regex '.*.hg.*' ! -regex '.*?debian-binary.*' ! -regex '.*?DEBIAN.*' -printf '%P ' | xargs md5sum > ${DST_ROOT}/DEBIAN/md5sums
+chmod 644 ${DST_ROOT}/DEBIAN/md5sums
+cd -
+install -m644 package/DEBIAN/control   ${DST_ROOT}/DEBIAN
+install -m644 package/DEBIAN/conffiles ${DST_ROOT}/DEBIAN
+install -m755 package/DEBIAN/postinst  ${DST_ROOT}/DEBIAN
+install -m755 package/DEBIAN/postrm    ${DST_ROOT}/DEBIAN
+install -m755 package/DEBIAN/prerm     ${DST_ROOT}/DEBIAN
+
+# Fixup control file vars
+DEB_SIZE=`du -c --block-size=1K ${DST_ROOT}/etc ${DST_ROOT}/usr | tail -1 | cut -f1`
+perl -i -p -e "s/{BuildVersion}/${VERSION}/g;s/{BuildPlatform}/${DEB_ARCH}/g;s/{BuildSize}/${DEB_SIZE}/g" ${DST_ROOT}/DEBIAN/control
+
+# Create the deb file
+echo
+echo Generating debian package ${DIST}/${DEB_FILE}
+fakeroot dpkg-deb -b ${DST_ROOT}
+mv ${DST_ROOT}.deb ${DIST}/${DEB_FILE}
+
+# We're done
+echo
+echo Done
+

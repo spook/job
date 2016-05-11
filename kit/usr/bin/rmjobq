@@ -1,0 +1,136 @@
+#!/bin/bash
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+# Remove a job queue
+
+set -e
+prog=$0
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+QSTATES=(run stop)
+JSTATES=(hold pend run tied done)
+
+usage() {
+    cat <<EOF >&2
+Remove a job queue.
+
+usage: $prog [options] <queue_name>
+  where options are:
+  -h  --help              Show this help message and exit
+  -q  --quiet             Quiet output
+  -R  --root-dir DIR      Root directory, default is /, used for testing
+  -T  --test-prefix PFX   Test prefix, used for testing
+  -y  --yes               Answer yes to confirmation question(s)
+
+EOF
+    exit $1
+}
+
+
+# Inits
+false() { return 1; }
+true()  { return 0; }
+ROOTDIR=${ROOTDIR:-}
+PREFIX=${PREFIX:-}
+QUIET=false
+YES=false
+
+# Parse the command line
+TEMP=$(getopt --options hqR:T:y \
+              --longopt help,quiet,root-dir:,test-prefix:,yes -- "$@")
+eval set -- "$TEMP"
+
+while true; do
+    case "$1" in
+        -h|--help)            usage 0;;
+        -q|--quiet)           QUIET=true;;
+        -R|--root-dir)        shift; ROOTDIR=$1;;
+        -T|--test-prefix)     shift; PREFIX=$1;;
+        -y|--yes)             YES=true;;
+        --)                   shift; break;;
+        *)                    usage 1;;
+    esac
+    shift
+done
+if [[ $# -lt 1 ]]; then
+    echo "*** Missing queue name(s)"
+    exit 1
+fi
+
+# Verify the queue name(s) are legit
+re='^[a-zA-Z0-9][a-zA-Z0-9\-\.]*$'
+for q in "$@"
+do
+    if ! [[ "$q" =~ $re ]]; then
+        echo "*** bad queue name '$q'; must match $re";
+        exit 1
+    fi
+done
+
+if ! $QUIET; then echo "Root directory is ${ROOTDIR:-/}"; fi
+
+# Remove each queue
+BASEDIR=$ROOTDIR/var/spool/job
+for q in "$@"
+do
+    QDIR=$BASEDIR/$q
+    if [[ $YES = false && ( ! -e $QDIR ) ]]; then
+        echo "*** Queue $q does not exist"
+        exit 1;
+    fi
+
+    # Count up jobs in each state
+    active=0
+    if ! $QUIET; then echo "Queue $q"; fi
+    for state in ${JSTATES[*]}
+    do
+        count=`ls -1 $QDIR/$state | wc -l`
+        if [[ $state != 'done' ]]; then active=$(( active+count )); fi
+        if ! $QUIET; then printf "  %4s jobs = %d\n" $state $count; fi
+    done
+    nuke=true
+    if ! $YES && [[ $active -gt 0 ]]
+    then
+        read -p "--- Queue $q has incomplete jobs; Really remove it? " -n 1 -r
+        echo ""
+        if ! [[ $REPLY =~ ^[Yy]$ ]]; then nuke=false; fi
+    fi
+
+    # TODO: cancel any running or shadowing jobs in the queue
+
+    # Nuke the queue
+    if $nuke
+    then
+        rm -fr $QDIR
+        if ! $QUIET; then echo "...removed queue $q"; fi
+    fi
+done
+
+# Tell the queue manager to re-check
+set +e
+QMPID=`ps ax -o pid,cmd | grep '\b'$PREFIX'queman\s*$' | grep -E -o '[0-9]+\b'`
+set -e
+if [ -n "$QMPID" ]; then
+    kill -1 $QMPID || true
+fi
+
+exit 0
+

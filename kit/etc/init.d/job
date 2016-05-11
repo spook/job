@@ -1,0 +1,130 @@
+#!/bin/bash 
+
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+# chkconfig: 2345 95 20
+# description: job - the Linux Batch Facility
+# Batch job and queue manager for the Linux Batch Facility.
+# processname: jobman
+#
+### BEGIN INIT INFO
+# Provides:          jobman
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Should-Start:      $syslog $named
+# Should-Stop:       $syslog $named
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Linux Job Subsystem
+# Description:       Batch job and queue manager for the Linux Batch Facility.
+### END INIT INFO
+
+PROG="queman"
+PROG_PATH="/usr/bin"
+PROG_ARGS=""
+
+check_root() {
+    if [ "$(id -u)" != "0" ]; then
+        echo "This script must be run as root" 1>&2
+        exit 1
+    fi
+}
+
+check_running() {
+    ps -C $PROG 1>/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        running=false
+    else
+        running=true
+    fi
+
+}
+
+start() {
+    check_root
+    check_running
+    if [ "$running" = true ]; then
+        echo "$PROG already started" 1>&2
+    else
+        $PROG_PATH/$PROG $PROG_ARGS >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
+        echo "$PROG started"
+    fi
+}
+
+stop() {
+    check_root
+    check_running
+    if [ "$running" = true ]; then
+        killall $PROG
+        echo "$PROG stopped"
+    else
+        echo "$PROG already stopped"
+    fi
+}
+
+stop_wait() {
+    stop
+    # now wait...
+    check_running
+    while [ "$running" = true ]; do
+        sleep 1
+        check_running
+    done
+}
+
+case "$1" in
+    start)
+        start
+        exit 0
+    ;;
+    stop)
+        stop
+        exit 0
+    ;;
+    stop_wait)
+        stop_wait
+        exit 0
+    ;;
+    reload|restart|force-reload)
+        stop_wait
+        start
+        exit 0
+    ;;
+    status)
+        PID=`ps aux | grep "$PROG_PATH/$PROG" | grep -v grep  | grep -v sudo | awk '{ print \$2 }'` || true
+        if [ -n "$PID" ]; then
+            echo "$PROG is running (PID $PID)"
+            exit 0
+        else
+            echo "$PROG is not running"
+            exit 1
+        fi
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|stop_wait|restart|reload|status}" 1>&2
+        exit 1
+    ;;
+esac
+

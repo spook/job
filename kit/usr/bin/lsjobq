@@ -1,0 +1,109 @@
+#!/bin/bash
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+# List job queue(s)
+
+set -e
+prog=$0
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+JSTATES=(hold pend run tied done)
+
+Usage() {
+    cat <<EOF >&2
+List job queue summary or contents
+
+Usage: $prog [options] <queue_name(s)>
+  where options are:
+  -h  --help              Show this help message and exit
+  -R  --root-dir DIR      Root directory, default is /
+  -v  --verbose           Show more output
+
+EOF
+    exit $1
+}
+
+# Inits
+false() { return 1; }
+true()  { return 0; }
+ROOTDIR=${ROOTDIR:-}
+VERBOSE=false
+
+# Parse the command line
+TEMP=$(getopt --options hR:v \
+              --longopt help,root-dir:,verbose -- "$@")
+eval set -- "$TEMP"
+
+while true; do
+    case "$1" in
+        -h|--help)            Usage 0;;
+        -R|--root-dir)        shift; ROOTDIR=$1;;
+        -v|--verbose)         VERBOSE=true;;
+        --)                   shift; break;;
+        *)                    Usage 1;;
+    esac
+    shift
+done
+
+# Verify the queue name(s) exist
+QBASE=$ROOTDIR/var/spool/job
+QLIST=()
+for q in "$@"
+do
+    if ! [ -e $QBASE/$q ]; then
+        echo "*** No such queue $q";
+        exit 1
+    fi
+    QLIST+=("$q")
+done
+if [[ $# -lt 1 ]]; then
+    QLIST=(`ls $QBASE`)
+fi
+
+if [[ ${#QLIST[@]} -lt 1 ]]; then
+    echo "*** No queues found"
+    exit 1
+fi
+
+# List summary of each queue
+### TODO:  add queue state - run/stop
+echo "queue           hold   pend    run   tied   done      total"
+echo "-----           ----   ----    ---   ----   ----      -----"
+
+for q in "${QLIST[@]}"
+do
+    QDIR=$QBASE/$q
+    nHOLD=$((`ls -f1 $QDIR/hold 2>/dev/null|wc -l` - 2))    # -f to not sort nor colorize
+    nPEND=$((`ls -f1 $QDIR/pend 2>/dev/null|wc -l` - 2))    #   - 2 for . and .. dirs
+    nRUN=$(( `ls -f1 $QDIR/run  2>/dev/null|wc -l` - 2))
+    nTIED=$((`ls -f1 $QDIR/tied 2>/dev/null|wc -l` - 2))
+    nDONE=$((`ls -f1 $QDIR/done 2>/dev/null|wc -l` - 2))
+    nTOT=$((nHOLD + nPEND + nRUN + nTIED + nDONE))
+    printf "%-13s %6d %6d %6d %6d %6d    %7d\n" "$q" $nHOLD $nPEND $nRUN $nTIED $nDONE $nTOT
+    if $VERBOSE; then
+        # TODO: Show the queue's attributes, indented beneath each, one item per line
+        echo "  Description: TBS"
+        echo "  Run Limit:   TBS"
+    fi
+done
+
+exit 0
+

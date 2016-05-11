@@ -1,0 +1,63 @@
+#!/usr/bin/perl -w
+
+#   LGPL 2.1+
+#
+#   job - the Linux Batch Facility
+#   (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
+#   Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+#
+#   This library is free software; you can redistribute it and/or
+#   modify it under the terms of the GNU Lesser General Public
+#   License as published by the Free Software Foundation; either
+#   version 2.1 of the License, or any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+#   Lesser General Public License for more details.
+#
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with this library; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
+#   USA
+
+# Colorize the output from our acbuild script (or other autoconf/libtool/gcc outputs).
+# Looks best on light colored backgrounds.
+# Use like this:
+#   ./acbuild.sh -prc 2>&1 | ./accolor
+# Remember the stderr redirect, because compiler errors go there, not stdout.
+# The -z option on acbuild.sh does the above, so you don't have to.
+
+
+use Term::ANSIColor;
+my $reset = color('reset');
+my $comp1 = color('green');
+my $comp2 = color('dark green');
+my $link1 = color('blue');
+my $link2 = color('dark blue');
+my $check = color('bold black');
+my $error = color('red');
+my $warn  = color('yellow');
+my $bold  = color('bold');
+my $note  = color('bold black');
+
+print $reset;
+
+while (<>) {
+    s/^ (={3,} .+? ) $               /$bold$1$reset/x;
+    s/^ (checking \s .+? ) $         /$check$1$reset/x;
+    s/  (compile .+? )( g\+\+ .+? $) /$1$comp1$2$reset/x;
+    s/  (compile .+? )( gcc   .+? $) /$1$comp2$2$reset/x;
+    s/  (link    .+? )( g\+\+ .+? $) /$1$link1$2$reset/x;
+    s/^ (g\+\+ .+? $)                /$link2$1$reset/x;
+    s/  (error: \s .+? ) $           /$error$1$reset/x;
+    s/^ (.+?)(note: \s .+? ) $       /$note$1$2$reset/x;
+    s/  (warn(ing)? : \s .+? ) $     /$warn$1$reset/x;
+    s/^ (ok \s .+? ) $               /$comp1$1$reset/x;
+    s/^ (not \s ok \s .+? ) $        /$error$1$reset/x;
+    s/^ ( \#\sFailed\stest\s .+? ) $ /$warn$1$reset/x;
+    s/^ ( \#\s+Got:\s .+? ) $        /$warn$1$reset/x;
+    s/^ ( \#\s+Expected:\s .+? ) $   /$warn$1$reset/x;
+    print;
+}
+
