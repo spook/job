@@ -3,9 +3,11 @@ Read-me file for 'job': the Linux batch job subsystem
 Building
 ========
 
-Unpack the source tarball:
+Unpack the source tarball or clone this repo:
 
     # tar -xzf job-yy.mm-nnn.tgz
+            or
+    # git clone https://github.com/spook/job.git
 
 Build the components and kit
 
@@ -15,6 +17,7 @@ Build the components and kit
 Look in dist/* for your .deb or .rpm kit to install.
 
     # dpkg -i dist/job-*.deb
+            or
     # rpm -i dist/job-*.rpm
 
 Enjoy!
