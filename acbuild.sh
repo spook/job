@@ -30,17 +30,18 @@ Usage() {
     cat <<EOF >&2
 Usage: $prog [options] <type> [args ...]
   where options are:
-  -B, --build-dir DIR     Install executables into specified directory (default
-                          is $PWD/bin)
+  -B, --build-dir DIR     Install executables into specified directory
+                             (default is $PWD/bin)
   -c, --compile           Compile the code
-  -D, --dest-dir DIR      Install executables into specified directory (default
-                          is $PWD/kit)
+  -D, --dest-dir DIR      Install executables into specified directory
+                             (default is $PWD/kit)
   -d, --debug             Compile with debug symbols
   -g, --coverage          Generate a test coverage report  
   -h, --help              Show this help message and exit
   -k, --clean             Perform "make clean uninstall"
   -m, --multi             Turn off multiprocessing (make -j flag)
-  -n, --revision          Use given revision number, no get from SVN
+  -n, --revision          Use given revision number, default derives from git
+                            Version format is YY.MM-NNN, provide just the NNN
   -p, --purge             Purge the code (and binaries)
   -R, --regen             Regenerate all autotools files
   -r, --reconfigure       Rerun configure
@@ -206,11 +207,9 @@ fi
 # cause configure to be run the next time make is run.
 #
 if [ -z $WANT_REVISION ]; then
-    rev=$(svnversion -c)
-    if [ "$rev" == "exported" ]; then
-        rev="EXP"
-    elif [ "$rev" == "Unversioned directory" ]; then
-        rev=$(git svn info | sed -n -e '/Revision/{s/.*: *//p}')
+    rev=$(git log master --pretty=oneline |wc -l)
+    if [ "$rev" == "" ]; then
+        rev=0
     fi
 else
     rev=${WANT_REVISION//[^0-9]/}   # take only digits
