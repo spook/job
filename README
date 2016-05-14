@@ -10,7 +10,7 @@ Unpack the source tarball:
 Build the components and kit
 
     # cd job
-    # ./acbuild -zcprs
+    # ./acbuild.sh -zcprs
 
 Look in dist/* for your .deb or .rpm kit to install.
 
