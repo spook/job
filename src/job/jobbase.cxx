@@ -27,13 +27,6 @@
 #include "job/log.hxx"
 #include "job/queue.hxx"
 #define __STDC_FORMAT_MACROS    // Enable PRI macros
-#include <inttypes.h>           // PRI macros
-#include <limits.h>             // PATH_MAX
-#include <stdio.h>              // snprintf(), sscanf()
-#include <string.h>             // strtok()
-#include <unistd.h>             // close() etc
-#include <sys/file.h>           // flock()
-#include <sys/stat.h>           // umask()
 
 using job::ERR_OK;
 using job::int2str;
