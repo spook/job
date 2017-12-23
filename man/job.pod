@@ -272,6 +272,7 @@ this environment.
 =head3 Jobs Have State
 
 Every job is in a single job state at any time.
+States are Hold, Pending, Running, Tied, and Done.
 
 =head3 Unique Job ID
 
@@ -309,7 +310,7 @@ still survives.  The job may be restarted if the reboot happened during its exec
 when restarted your job is provided contextual clues in the environment so it
 can intelligently resume where it left off.
 
-If the queues are part of a cluster or distribute environment, the job may start on 
+If the queues are part of a cluster or distributed environment, the job may start on 
 one node then continue on another.
 
 =head3 Job Attributes Available
@@ -357,7 +358,7 @@ the user may submit a job of a predefined I<type>.
 Job types act as templates for the command to execute.  
 For example, the "payroll" type may produce the paycheck for a particular employee:
 
-  # mkjob -t payroll "Bloody Mary"
+  # mkjob -t payroll "Mary Smith"
 
 The job type definition may include variable portions in the template.
 Each queue may have its own set of job type definitions.
@@ -382,7 +383,7 @@ It's possible for a job to "go remote".    More TBS... ***TODO***
 
 =head3 Commands to manage job queues (f201)
 
-This package contains commands to manage your job queues:
+There are commands to manage your job B<queues>, in additon to your jobs:
 
 =over
 
@@ -407,7 +408,7 @@ remove a queue and its jobs
 =head3 Queue Name and Description
 
 Queues have a simple identifying name, such as "batch" or "financials".  
-An optional description may also be given for the queue; this is a sentence or so 
+An optional description may also be given for the queue; this is a short sentence 
 of additional detail.
 
 =head3 Run Limit 
@@ -492,14 +493,14 @@ Please don't mess with the files in this tree!  You have been warned.
 
 =item tI<run_time>.pI<priority>.jI<job_id>.I<submittor>
 
+A job file; it is stored in one of the C</var/spool/job/I<queue_name>/I<job_state>/>
+directories as explained above, according to the state of the job.
+
 Example job file names:
 
   t1448661183.p3.j0001472.mary
   t1000000001.p5.j0000001.spook
   t1348201330.p8.j0090323.joe.blow@example.com
-
-A job file; stored in one of the C</var/spool/job/I<queue_name>/I<job_state>/>
-directories as explained above.
 
 The file name format encodes some job attributes:
 The I<run_time> is the epoch time when the job is next eligible
