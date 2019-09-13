@@ -5,7 +5,7 @@
 
     job - the Linux Batch Facility
     (c) Copyright 2014-2016 Hewlett Packard Enterprise Development LP
-    Created by Uncle Spook <spook(at)MisfitMountain(dot)org>
+    Created by Uncle Spook https://github.com/spook/job
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public

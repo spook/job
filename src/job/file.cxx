@@ -403,7 +403,7 @@ job::status job::file::unlock() {
     return error = ERR_OK;
 }
 
-job::status job::file::write() {
+job::status job::file::store() {
 
     // Update section 0 header items
 
@@ -432,7 +432,7 @@ job::status job::file::write() {
     repath();
     if (oldnam.empty()) oldnam = name();
     mode_t oldum = umask(007);  // mode: user & group get all, others get nothing
-    store(oldnam);              // write the file
+    multipart::store(oldnam);   // store the contents
     umask(oldum);               // mode: set it back
     if (error) return error.set("write "+oldnam, std::string(error));   // "error" from multipart
 

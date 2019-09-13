@@ -217,7 +217,7 @@ int main(int argc, const char* argv[]) {
     jf.uid       = getuid();    // Use caller's read UID
     jf.gid       = getgid();    // Use caller's read GID
     jf.state     = job::hold;   // Start in hold
-    jf.write();                 // Create the file
+    jf.store();                 // Create the file
     if (jf.error) die(jf.error);
     jf.state     = job::pend;   // Move back into pending
     jf.repath();                // Then move into place, under lock
@@ -225,7 +225,7 @@ int main(int argc, const char* argv[]) {
         //  and then move it into 'pend' state with repath() (which uses
         //  a lock).  If we do not, the jobman can pickup the job just
         //  as it is created -- empty -- and try to scheule it, before
-        //  the write() finishes to populate the job info.
+        //  the store() finishes to populate the job info.
         //  This has been demonstrated in testing; it really occurs!
         //  So the above trick fixes this.
     if (jf.error) {

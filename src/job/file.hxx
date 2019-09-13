@@ -106,7 +106,7 @@ class file : public multipart {
     idlist_t            tied_ids();                 // Return list of tied job IDs
 
     // Store the information back to disk.  Invokes repath() if needed.
-    job::status         write();    // TODO: rename to store()
+    job::status         store();
 
     // Parse just the filename of a jobfile
     static job::status  parse(const std::string & fnam,

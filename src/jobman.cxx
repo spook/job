@@ -169,7 +169,7 @@ static int try_done(job::launch & pad, void* ua, pid_t cpid, int cstat) {
               : /*-*/   job::done;
     (*jf)[n]["State"] = job::state2str(jf->state);
     if (jf->state == job::done) jf->run_time = time(NULL);  // Easy for housekeeper to find
-    jf->write();
+    jf->store();
     if (jf->error) {
         logerror("Job %d: Cannot update job: %s", jf->id, jf->error);
         // XXX what can we do here???
@@ -226,7 +226,7 @@ job::status breaking_up_is_hard_to_do(job::file* jf) {
         kidjob.mnode = "";
         kidjob.tie_to(it->first);
         kidjob.state = job::hold;       // always start in hold state
-        kidjob.write();
+        kidjob.store();
         if (!kidjob.error) {
             kidjob.state = job::pend;   // ...then move into pending
             kidjob.repath();
@@ -249,7 +249,7 @@ job::status breaking_up_is_hard_to_do(job::file* jf) {
     }
     jf->state  = job::tied;
     jf->closed = true;
-    jf->write();
+    jf->store();
     if (jf->error) {
         logerror("Job %d: (Group) Cannot write job file: %s", jf->id, jf->error);
         // TODO: add error completion to job
@@ -665,7 +665,7 @@ SUPPRESS_DIAGNOSTIC_END
 
     // Move to RUN state
     jf->state = job::run;
-    jf->write();    // remember, write() does a repath() too if needed
+    jf->store();    // remember, store() does a repath() too if needed
     if (jf->error) {
         logerror("Job %d: Cannot write job file: %s", jf->id, jf->error);
         // TODO: add error completion to job

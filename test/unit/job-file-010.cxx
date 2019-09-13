@@ -34,7 +34,7 @@
 #include <stdlib.h>         // mkstemps()
 #include <string>
 #include <linux/limits.h>   // PATH_MAX
-#include <unistd.h>       // unlink(), write(), readlink()
+#include <unistd.h>         // unlink(), write(), readlink()
 
 using namespace std;
 using namespace TAP;
@@ -76,8 +76,8 @@ int main(int argc, char* argv[]) {
         job::file jf;
         isok(jf, "default constructor");
         like(jf.name(), "/batch/hold/t0946684799.p5.j0000001.$", "file name");
-        jf.write();
-        isok(jf, "write()");
+        jf.store();
+        isok(jf, "store()");
         jf.state = job::pend;
         jf.repath();
         isok(jf, "repath(pend(same))");
@@ -119,8 +119,8 @@ int main(int argc, char* argv[]) {
         jf.notify  = true;
         jf.args.push_back("--not");
         jf.args.push_back("java");
-        jf.write();
-        isok(jf, "write()");
+        jf.store();
+        isok(jf, "store()");
         is(jf.to_string(), 
             "Command:       mklove\n"
             "Job-Arg-1:     --not\n"
