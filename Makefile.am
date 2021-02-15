@@ -42,6 +42,7 @@ libjob_la_SOURCES   = src/job/config.cxx \
                       src/job/file.cxx \
                       src/job/getopt.cxx \
                       src/job/isafe.cxx \
+                      src/job/jobbase.cxx \
                       src/job/launch.cxx \
                       src/job/log.cxx \
                       src/job/multipart.cxx \
